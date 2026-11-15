@@ -6,6 +6,10 @@
     "orientation": "landscape",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0b0d12",
+    "splash": {
+      "backgroundColor": "#0b0d12",
+      "resizeMode": "contain"
+    },
     "android": {
       "package": "com.ibnumalik.mesin2tak3d",
       "adaptiveIcon": {
