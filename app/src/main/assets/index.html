@@ -334,6 +334,118 @@
       transform: translateX(-50%) translateY(0);
     }
 
+    /* Panel Pengaturan Kualitas Grafis */
+    .settings-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: calc(16px + var(--safe-top)) calc(16px + var(--safe-right)) calc(16px + var(--safe-bottom)) calc(16px + var(--safe-left));
+      background: rgba(5, 7, 11, 0.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+
+    .settings-overlay.show {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .settings-panel {
+      width: min(100%, 360px);
+      max-height: calc(100vh - 32px - var(--safe-top) - var(--safe-bottom));
+      overflow-y: auto;
+      background: rgba(17, 22, 32, 0.96);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+    }
+
+    .settings-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 15px;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 6px;
+    }
+
+    .settings-close {
+      appearance: none;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .settings-desc {
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .quality-options {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .quality-option {
+      appearance: none;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      width: 100%;
+      text-align: left;
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(30, 38, 54, 0.55);
+      color: #cbd5e1;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .quality-option .q-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #f1f5f9;
+    }
+
+    .quality-option .q-sub {
+      font-size: 11px;
+      color: #94a3b8;
+    }
+
+    .quality-option.active {
+      background: rgba(14, 165, 233, 0.2);
+      border-color: rgba(56, 189, 248, 0.6);
+      box-shadow: 0 0 14px rgba(14, 165, 233, 0.2);
+    }
+
+    .quality-option.active .q-title {
+      color: #7dd3fc;
+    }
+
+    .settings-note {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
     #loader .loader-sub {
       font-size: 11px;
       color: #64748b;
@@ -437,6 +549,39 @@
       <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
       <span>Reset</span>
     </button>
+
+    <div class="divider"></div>
+
+    <button id="btn-settings" class="ctrl-btn" title="Pengaturan Kualitas Grafis">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      <span>Pengaturan</span>
+    </button>
+  </div>
+
+  <!-- Panel Pengaturan Kualitas Grafis -->
+  <div id="settings-overlay" class="settings-overlay">
+    <div class="settings-panel">
+      <div class="settings-header">
+        <span>Kualitas Grafis</span>
+        <button id="btn-settings-close" class="settings-close" aria-label="Tutup">&times;</button>
+      </div>
+      <p class="settings-desc">Jika animasi terasa patah-patah (lag), turunkan kualitas di sini — tidak perlu mengubah pengaturan HP.</p>
+      <div class="quality-options">
+        <button class="quality-option" data-quality="tinggi">
+          <span class="q-title">Tinggi</span>
+          <span class="q-sub">Bayangan tajam, paling berat</span>
+        </button>
+        <button class="quality-option" data-quality="sedang">
+          <span class="q-title">Sedang</span>
+          <span class="q-sub">Seimbang (disarankan)</span>
+        </button>
+        <button class="quality-option" data-quality="hemat">
+          <span class="q-title">Hemat</span>
+          <span class="q-sub">Tanpa bayangan, paling ringan</span>
+        </button>
+      </div>
+      <p id="quality-note" class="settings-note"></p>
+    </div>
   </div>
 
   <script type="module">
@@ -480,6 +625,23 @@
      * INISIALISASI SCENE, RENDERER, KAMERA & STUDIO ENVIRONMENT PBR
      * =========================================================================
      */
+    /**
+     * =========================================================================
+     * PRESET KUALITAS GRAFIS (agar lag bisa diatasi lewat pengaturan,
+     * bukan cuma diturunkan paksa) — disimpan di localStorage, dibaca
+     * sebelum renderer dibuat.
+     * =========================================================================
+     */
+    const QUALITY_PRESETS = {
+      tinggi: { label: 'Tinggi', pixelCap: 2.0, shadowSize: 2048, shadowsEnabled: true, envIntensity: 0.85 },
+      sedang: { label: 'Sedang', pixelCap: 1.5, shadowSize: 1024, shadowsEnabled: true, envIntensity: 0.7 },
+      hemat: { label: 'Hemat', pixelCap: 1.0, shadowSize: 512, shadowsEnabled: false, envIntensity: 0.55 },
+    };
+    // Default "sedang" dipilih supaya aman di perangkat kelas menengah-bawah;
+    // pengguna bisa naikkan/turunkan sendiri lewat tombol Pengaturan.
+    let currentQualityKey = localStorage.getItem('m2t_quality') || 'sedang';
+    if (!QUALITY_PRESETS[currentQualityKey]) currentQualityKey = 'sedang';
+
     const container = document.getElementById('canvas-container');
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0b0d12);
@@ -499,9 +661,9 @@
       antialias: true,
       powerPreference: 'high-performance',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY_PRESETS[currentQualityKey].pixelCap));
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.enabled = QUALITY_PRESETS[currentQualityKey].shadowsEnabled;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.15;
@@ -512,7 +674,7 @@
     const roomEnv = new RoomEnvironment();
     const envRT = pmremGenerator.fromScene(roomEnv, 0.04);
     scene.environment = envRT.texture;
-    scene.environmentIntensity = 0.85;
+    scene.environmentIntensity = QUALITY_PRESETS[currentQualityKey].envIntensity;
 
     // OrbitControls 360 derajat dengan Damping halus
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -535,9 +697,9 @@
     // Key Light (Utama dari kanan atas depan dengan bayangan lembut)
     const keyLight = new THREE.DirectionalLight(0xfff7ed, 2.4);
     keyLight.position.set(8, 14, 9);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048;
-    keyLight.shadow.mapSize.height = 2048;
+    keyLight.castShadow = QUALITY_PRESETS[currentQualityKey].shadowsEnabled;
+    keyLight.shadow.mapSize.width = QUALITY_PRESETS[currentQualityKey].shadowSize;
+    keyLight.shadow.mapSize.height = QUALITY_PRESETS[currentQualityKey].shadowSize;
     keyLight.shadow.camera.near = 2;
     keyLight.shadow.camera.far = 35;
     const d = 8.5;
@@ -1733,6 +1895,40 @@
       isResettingCamera = false;
     });
 
+    // 7. Panel Pengaturan Kualitas Grafis
+    const btnSettings = document.getElementById('btn-settings');
+    const settingsOverlay = document.getElementById('settings-overlay');
+    const btnSettingsClose = document.getElementById('btn-settings-close');
+
+    function openSettings() {
+      settingsOverlay.classList.add('show');
+    }
+    function closeSettings() {
+      settingsOverlay.classList.remove('show');
+    }
+
+    btnSettings.addEventListener('click', openSettings);
+    btnSettingsClose.addEventListener('click', closeSettings);
+    settingsOverlay.addEventListener('click', (e) => {
+      if (e.target === settingsOverlay) closeSettings();
+    });
+
+    document.querySelectorAll('.quality-option').forEach((el) => {
+      el.addEventListener('click', () => applyQuality(el.dataset.quality));
+    });
+
+    // Tandai pilihan kualitas aktif saat ini (dibaca sebelum renderer dibuat)
+    document.querySelectorAll('.quality-option').forEach((el) => {
+      el.classList.toggle('active', el.dataset.quality === currentQualityKey);
+    });
+    const initialNoteEl = document.getElementById('quality-note');
+    if (initialNoteEl) {
+      const p = QUALITY_PRESETS[currentQualityKey];
+      initialNoteEl.textContent = p.shadowsEnabled
+        ? `Resolusi render ${p.pixelCap}x, bayangan aktif (${p.shadowSize}px).`
+        : `Resolusi render ${p.pixelCap}x, bayangan dimatikan untuk performa terbaik.`;
+    }
+
     /**
      * =========================================================================
      * RESPONSIVE RESIZE & ANIMATION LOOP
@@ -1742,8 +1938,42 @@
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY_PRESETS[currentQualityKey].pixelCap));
     });
+
+    /**
+     * =========================================================================
+     * TERAPKAN & SIMPAN PILIHAN KUALITAS GRAFIS SAAT DIUBAH DARI PANEL PENGATURAN
+     * =========================================================================
+     */
+    function applyQuality(key) {
+      if (!QUALITY_PRESETS[key]) return;
+      currentQualityKey = key;
+      try { localStorage.setItem('m2t_quality', key); } catch (e) { /* abaikan jika storage tidak tersedia */ }
+      const preset = QUALITY_PRESETS[key];
+
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, preset.pixelCap));
+      renderer.shadowMap.enabled = preset.shadowsEnabled;
+      keyLight.castShadow = preset.shadowsEnabled;
+      keyLight.shadow.mapSize.width = preset.shadowSize;
+      keyLight.shadow.mapSize.height = preset.shadowSize;
+      // Paksa shadow map lama dibuang agar dibuat ulang dengan ukuran baru
+      if (keyLight.shadow.map) {
+        keyLight.shadow.map.dispose();
+        keyLight.shadow.map = null;
+      }
+      scene.environmentIntensity = preset.envIntensity;
+
+      document.querySelectorAll('.quality-option').forEach((el) => {
+        el.classList.toggle('active', el.dataset.quality === key);
+      });
+      const noteEl = document.getElementById('quality-note');
+      if (noteEl) {
+        noteEl.textContent = preset.shadowsEnabled
+          ? `Resolusi render ${preset.pixelCap}x, bayangan aktif (${preset.shadowSize}px).`
+          : `Resolusi render ${preset.pixelCap}x, bayangan dimatikan untuk performa terbaik.`;
+      }
+    }
 
     const clock = new THREE.Clock();
 
