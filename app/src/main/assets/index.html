@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Mesin Motor 2-Tak 3D — Visualisasi Mekanis</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #0b0d12;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: #e2e8f0;
+    }
+
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+
+    #canvas-container {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    /* Indikator Fase Siklus 2-Tak Minimalis di Pojok Kiri Atas */
+    .telemetry-pill {
+      position: fixed;
+      top: calc(10px + var(--safe-top));
+      left: calc(10px + var(--safe-left));
+      right: calc(10px + var(--safe-right));
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: rgba(15, 19, 28, 0.68);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+      pointer-events: none;
+      width: fit-content;
+      max-width: calc(100vw - 20px - var(--safe-left) - var(--safe-right));
+      overflow: hidden;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 10px #38bdf8;
+      transition: background 0.12s ease, box-shadow 0.12s ease;
+    }
+
+    .telemetry-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(9px, 2.6vw, 11px);
+      letter-spacing: 0.03em;
+      color: #cbd5e1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .telemetry-phase {
+      color: #f8fafc;
+      font-weight: 500;
+    }
+
+    /* Bar Kontrol Minimalis di Bawah Layar */
+    .control-dock {
+      position: fixed;
+      bottom: calc(12px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      align-items: center;
+      gap: 5px;
+      padding: 7px 9px;
+      width: max-content;
+      max-width: calc(100vw - 16px - var(--safe-left) - var(--safe-right));
+      max-height: 44px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      border-radius: 16px;
+      background: rgba(15, 19, 28, 0.72);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+    }
+
+    .control-dock::-webkit-scrollbar {
+      display: none;
+    }
+
+    .ctrl-btn, .speed-group {
+      flex: 0 0 auto;
+    }
+
+    .ctrl-btn {
+      appearance: none;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(30, 38, 54, 0.65);
+      color: #cbd5e1;
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(10px, 2.8vw, 12px);
+      font-weight: 500;
+      padding: 8px clamp(8px, 2.2vw, 12px);
+      border-radius: 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.18s ease;
+      white-space: nowrap;
+    }
+
+    .ctrl-btn:hover {
+      background: rgba(51, 65, 85, 0.85);
+      color: #ffffff;
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .ctrl-btn:active {
+      transform: scale(0.96);
+    }
+
+    .ctrl-btn.active {
+      background: rgba(14, 165, 233, 0.24);
+      border-color: rgba(56, 189, 248, 0.6);
+      color: #7dd3fc;
+      box-shadow: 0 0 14px rgba(14, 165, 233, 0.2);
+    }
+
+    .ctrl-btn svg {
+      width: 14px;
+      height: 14px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .divider {
+      width: 1px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 0 2px;
+    }
+
+    .speed-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 10px;
+      background: rgba(22, 28, 40, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .speed-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      min-width: 44px;
+      text-align: right;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 78px;
+      height: 4px;
+      border-radius: 999px;
+      background: rgba(148, 163, 184, 0.28);
+      outline: none;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+    }
+
+    input[type="range"]::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border: none;
+      border-radius: 50%;
+      background: #38bdf8;
+      box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
+      cursor: pointer;
+    }
+
+    /* Loading Overlay Singkat */
+    #loader {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: #0b0d12;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: opacity 0.4s ease;
+    }
+
+    .spinner {
+      width: 32px;
+      height: 32px;
+      border: 2.5px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 640px) {
+      .control-dock {
+        padding: 6px 8px;
+        gap: 4px;
+        border-radius: 14px;
+      }
+      .ctrl-btn span {
+        display: none;
+      }
+      .ctrl-btn {
+        padding: 9px;
+      }
+      .divider {
+        display: none;
+      }
+      input[type="range"] {
+        width: 56px;
+      }
+      .telemetry-pill {
+        padding: 6px 10px;
+      }
+    }
+
+    /* Layar pendek (landscape di HP kecil) agar dock & pil tidak memakan ruang vertikal canvas */
+    @media (max-height: 420px) {
+      .telemetry-pill {
+        top: calc(6px + var(--safe-top));
+        padding: 5px 10px;
+      }
+      .control-dock {
+        bottom: calc(6px + var(--safe-bottom));
+        max-height: 38px;
+        padding: 5px 8px;
+      }
+      .ctrl-btn {
+        padding: 6px 8px;
+      }
+      input[type="range"] {
+        width: 50px;
+      }
+    }
+
+    /* Layar sangat sempit (lebar < 340px, mis. HP lama dalam mode portrait) */
+    @media (max-width: 340px) {
+      .telemetry-text {
+        font-size: 9px;
+      }
+      .speed-label {
+        display: none;
+      }
+    }
+
+    /* Mode Offline: pita peringatan kecil di bawah telemetry pill */
+    #offline-banner {
+      position: fixed;
+      top: calc(10px + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%) translateY(-140%);
+      z-index: 11;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(234, 88, 12, 0.92);
+      color: #fff7ed;
+      font-family: 'Inter', sans-serif;
+      font-size: clamp(10px, 2.6vw, 11px);
+      font-weight: 500;
+      white-space: nowrap;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+      transition: transform 0.3s ease;
+      pointer-events: none;
+    }
+
+    #offline-banner.show {
+      transform: translateX(-50%) translateY(0);
+    }
+
+    #loader .loader-sub {
+      font-size: 11px;
+      color: #64748b;
+      max-width: 80vw;
+      text-align: center;
+      line-height: 1.5;
+    }
+  </style>
+
+  <!-- Import Map untuk Three.js r160 dan Addons Resmi -->
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Loader saat inisialisasi geometri PBR -->
+  <div id="loader">
+    <div class="spinner"></div>
+    <div id="loader-text" style="font-size: 12px; color: #94a3b8; letter-spacing: 0.05em;">MEMUAT MODEL CAD 2-TAK...</div>
+    <div id="loader-sub" class="loader-sub"></div>
+  </div>
+
+  <!-- Pita Peringatan Mode Offline -->
+  <div id="offline-banner">MODE OFFLINE — memakai data tersimpan di perangkat</div>
+
+  <!-- Script independen (non-module) untuk deteksi offline & fallback loader,
+       berjalan terpisah dari modul Three.js agar tetap aktif walau modul gagal dimuat -->
+  <script>
+    (function () {
+      var banner = document.getElementById('offline-banner');
+      var loaderSub = document.getElementById('loader-sub');
+
+      function setOfflineUI(isOffline) {
+        if (banner) banner.classList.toggle('show', isOffline);
+      }
+      setOfflineUI(!navigator.onLine);
+      window.addEventListener('online', function () { setOfflineUI(false); });
+      window.addEventListener('offline', function () { setOfflineUI(true); });
+
+      // Jika setelah beberapa detik loader belum hilang (modul 3D gagal dimuat,
+      // mis. offline & library belum pernah tersimpan di cache), tampilkan keterangan.
+      setTimeout(function () {
+        var loader = document.getElementById('loader');
+        if (loader && document.body.contains(loader) && loaderSub) {
+          loaderSub.textContent = !navigator.onLine
+            ? 'Memuat lebih lama dari biasanya. Sambungkan internet sekali agar mesin 3D tersimpan untuk pemakaian offline berikutnya.'
+            : 'Memuat lebih lama dari biasanya, mohon tunggu...';
+        }
+      }, 6000);
+    })();
+  </script>
+
+  <!-- Indikator Siklus Real-time -->
+  <div class="telemetry-pill">
+    <div id="phase-dot" class="status-dot"></div>
+    <div class="telemetry-text">
+      2-STROKE &bull; <span id="phase-label" class="telemetry-phase">KOMPRESI</span> &bull; <span id="crank-deg">0&deg;</span>
+    </div>
+  </div>
+
+  <!-- Viewport 3D -->
+  <div id="canvas-container"></div>
+
+  <!-- Kontrol Minimalis -->
+  <div class="control-dock">
+    <button id="btn-transparent" class="ctrl-btn active" title="Mode Transparan / X-Ray">
+      <svg viewBox="0 0 24 24"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span>Transparan</span>
+    </button>
+
+    <button id="btn-exploded" class="ctrl-btn" title="Tampilan Komponen Terurai">
+      <svg viewBox="0 0 24 24"><path d="M12 3v6m0 6v6M3 12h6m6 0h6"/><circle cx="12" cy="12" r="2"/></svg>
+      <span>Exploded</span>
+    </button>
+
+    <button id="btn-rotate" class="ctrl-btn" title="Putar Kamera Otomatis">
+      <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+      <span>Rotate</span>
+    </button>
+
+    <div class="divider"></div>
+
+    <button id="btn-play" class="ctrl-btn active" title="Jeda / Jalan">
+      <svg id="icon-play" viewBox="0 0 24 24"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+      <span id="text-play">Jalan</span>
+    </button>
+
+    <div class="speed-group" title="Kecepatan Putaran Mesin">
+      <input id="speed-slider" type="range" min="0.05" max="3.0" step="0.05" value="0.75" />
+      <span id="speed-val" class="speed-label">0.75x</span>
+    </div>
+
+    <div class="divider"></div>
+
+    <button id="btn-reset" class="ctrl-btn" title="Reset Sudut Kamera">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <span>Reset</span>
+    </button>
+  </div>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+    /**
+     * =========================================================================
+     * KONFIGURASI TEKNIS & PARAMETER KINEMATIKA MESIN 2-TAK (SATU SILINDER)
+     * =========================================================================
+     */
+    const ENGINE_SPECS = {
+      boreRadius: 1.35,        // Radius silinder dalam (Diameter 2.70 unit ~ 54mm skala)
+      crankRadius: 1.05,       // Radius throw kruk as (Stroke = 2 * 1.05 = 2.10 unit)
+      conRodLength: 3.45,      // Panjang batang piston (Connecting Rod)
+      crankCenterY: 0.0,       // Pusat sumbu kruk as di Y = 0
+      blockBottomY: 2.35,      // Dasar blok silinder
+      blockHeight: 3.25,       // Tinggi blok silinder
+      headHeight: 1.15,        // Tinggi kepala silinder
+      pistonHeight: 1.48,      // Tinggi skirt piston
+      pistonPinOffset: 0.68,   // Jarak pin piston dari dasar piston
+    };
+
+    // Variabel State Interaktif
+    const state = {
+      crankAngle: 0.35,        // Sudut kruk as dalam radian (0 = TMA / Top Dead Center)
+      isPlaying: true,
+      speedMultiplier: 0.75,
+      autoRotate: false,
+      isTransparent: true,     // Default aktif agar mekanisme dalam langsung terlihat
+      isExploded: false,
+      explodeProgress: 0,      // Nilai interpolasi halus 0.0 -> 1.0
+    };
+
+    // Daftar material casing yang dapat dibuat transparan (X-Ray cutaway)
+    const cutawayMaterials = [];
+
+    /**
+     * =========================================================================
+     * INISIALISASI SCENE, RENDERER, KAMERA & STUDIO ENVIRONMENT PBR
+     * =========================================================================
+     */
+    const container = document.getElementById('canvas-container');
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0b0d12);
+    scene.fog = new THREE.FogExp2(0x0b0d12, 0.022);
+
+    const camera = new THREE.PerspectiveCamera(
+      42,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      120
+    );
+    const INITIAL_CAM_POS = new THREE.Vector3(7.8, 5.4, 9.6);
+    const INITIAL_TARGET = new THREE.Vector3(0.2, 2.7, 0.0);
+    camera.position.copy(INITIAL_CAM_POS);
+
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: 'high-performance',
+    });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.15;
+    container.appendChild(renderer.domElement);
+
+    // Environment Refleksi Logam Studio (PMREM + RoomEnvironment)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const roomEnv = new RoomEnvironment();
+    const envRT = pmremGenerator.fromScene(roomEnv, 0.04);
+    scene.environment = envRT.texture;
+    scene.environmentIntensity = 0.85;
+
+    // OrbitControls 360 derajat dengan Damping halus
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.target.copy(INITIAL_TARGET);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance = 4.2;
+    controls.maxDistance = 24.0;
+    controls.maxPolarAngle = Math.PI * 0.82;
+    controls.update();
+
+    /**
+     * =========================================================================
+     * PENCAHAYAAN STUDIO 3-TITIK & LANTAI SHADOW RECEIVER
+     * =========================================================================
+     */
+    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x1e293b, 0.45);
+    scene.add(hemiLight);
+
+    // Key Light (Utama dari kanan atas depan dengan bayangan lembut)
+    const keyLight = new THREE.DirectionalLight(0xfff7ed, 2.4);
+    keyLight.position.set(8, 14, 9);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.camera.near = 2;
+    keyLight.shadow.camera.far = 35;
+    const d = 8.5;
+    keyLight.shadow.camera.left = -d;
+    keyLight.shadow.camera.right = d;
+    keyLight.shadow.camera.top = d;
+    keyLight.shadow.camera.bottom = -d;
+    keyLight.shadow.bias = -0.0005;
+    scene.add(keyLight);
+
+    // Rim Light (Cahaya tepi biru dingin dari belakang kiri untuk menonjolkan kontur logam)
+    const rimLight = new THREE.DirectionalLight(0x38bdf8, 1.6);
+    rimLight.position.set(-9, 8, -8);
+    scene.add(rimLight);
+
+    // Fill Light (Cahaya pengisi hangat dari bawah kiri)
+    const fillLight = new THREE.DirectionalLight(0xfdba74, 0.65);
+    fillLight.position.set(-6, -2, 7);
+    scene.add(fillLight);
+
+    // Lantai Studio Gelap Reflektif Halus + Grid Teknis Tipis
+    const floorGeo = new THREE.CircleGeometry(28, 64);
+    const floorMat = new THREE.MeshStandardMaterial({
+      color: 0x0e1118,
+      roughness: 0.72,
+      metalness: 0.25,
+    });
+    const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+    floorMesh.rotation.x = -Math.PI / 2;
+    floorMesh.position.y = -2.45;
+    floorMesh.receiveShadow = true;
+    scene.add(floorMesh);
+
+    const gridHelper = new THREE.PolarGridHelper(14, 16, 8, 64, 0x1e293b, 0x161e2e);
+    gridHelper.position.y = -2.44;
+    scene.add(gridHelper);
+
+    /**
+     * =========================================================================
+     * TEKSTUR PROSEDURAL & MATERIAL PBR LOGAM REALISTIS
+     * =========================================================================
+     */
+    function createNoiseBumpTexture() {
+      const size = 256;
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const imgData = ctx.createImageData(size, size);
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const v = 115 + Math.floor(Math.random() * 26);
+        imgData.data[i] = v;
+        imgData.data[i + 1] = v;
+        imgData.data[i + 2] = v;
+        imgData.data[i + 3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+      const tex = new THREE.CanvasTexture(canvas);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 4);
+      return tex;
+    }
+
+    const castBumpTex = createNoiseBumpTexture();
+
+    // Fungsi pembantu untuk mendaftarkan material luar yang bisa transparan
+    function registerCutawayMat(mat, targetOpacity = 0.24) {
+      mat.userData.targetOpacity = targetOpacity;
+      cutawayMaterials.push(mat);
+      return mat;
+    }
+
+    const MAT = {
+      // Cast Aluminium (Blok silinder & Crankcase)
+      castAluminium: registerCutawayMat(
+        new THREE.MeshPhysicalMaterial({
+          color: 0xb8c0c8,
+          metalness: 0.84,
+          roughness: 0.42,
+          bumpMap: castBumpTex,
+          bumpScale: 0.006,
+          clearcoat: 0.08,
+          transparent: true,
+          opacity: 0.24,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+        0.24
+      ),
+
+      // Cast Aluminium Solid (Untuk part kecil yang tidak perlu transparan penuh)
+      castAluminiumSolid: new THREE.MeshStandardMaterial({
+        color: 0xc2c9d1,
+        metalness: 0.85,
+        roughness: 0.38,
+        bumpMap: castBumpTex,
+        bumpScale: 0.005,
+      }),
+
+      // Machined Aluminium (Piston, sirip yang dibubut)
+      machinedAluminium: new THREE.MeshStandardMaterial({
+        color: 0xdbe2e9,
+        metalness: 0.92,
+        roughness: 0.2,
+      }),
+
+      // Dark Cast Iron / Baja Gelap (Liner silinder, daun kruk as, leher knalpot)
+      darkIron: new THREE.MeshStandardMaterial({
+        color: 0x3b424c,
+        metalness: 0.82,
+        roughness: 0.52,
+        bumpMap: castBumpTex,
+        bumpScale: 0.008,
+      }),
+
+      // Liner Silinder Transparan (Dinding dalam ruang bakar)
+      cylinderLiner: registerCutawayMat(
+        new THREE.MeshPhysicalMaterial({
+          color: 0x525b66,
+          metalness: 0.88,
+          roughness: 0.28,
+          transparent: true,
+          opacity: 0.18,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+        0.18
+      ),
+
+      // Chrome Steel (Ring piston, pen piston, crank pin, baut)
+      chromeSteel: new THREE.MeshStandardMaterial({
+        color: 0xf1f5f9,
+        metalness: 0.98,
+        roughness: 0.11,
+      }),
+
+      // Bronze / Copper Bearing Bushing (Stang seher & bushing)
+      bronze: new THREE.MeshStandardMaterial({
+        color: 0xc88a4b,
+        metalness: 0.9,
+        roughness: 0.26,
+      }),
+
+      // Forged Steel Connecting Rod
+      forgedSteel: new THREE.MeshStandardMaterial({
+        color: 0x7a8491,
+        metalness: 0.88,
+        roughness: 0.34,
+        bumpMap: castBumpTex,
+        bumpScale: 0.004,
+      }),
+
+      // Keramik Putih Busi
+      ceramicWhite: new THREE.MeshPhysicalMaterial({
+        color: 0xf8fafc,
+        metalness: 0.02,
+        roughness: 0.12,
+        clearcoat: 0.9,
+      }),
+
+      // Kuningan / Brass (Karburator & terminal busi)
+      brass: new THREE.MeshStandardMaterial({
+        color: 0xd4af37,
+        metalness: 0.92,
+        roughness: 0.24,
+      }),
+
+      // Karet Hitam (Intake manifold boot, selang, kabel busi)
+      rubberBlack: new THREE.MeshStandardMaterial({
+        color: 0x181b20,
+        metalness: 0.05,
+        roughness: 0.82,
+      }),
+
+      // Knalpot Expansion Chamber (Baja las biru-abu panas)
+      exhaustSteel: registerCutawayMat(
+        new THREE.MeshPhysicalMaterial({
+          color: 0x565e69,
+          metalness: 0.88,
+          roughness: 0.32,
+          clearcoat: 0.2,
+          transparent: true,
+          opacity: 0.42,
+          depthWrite: false,
+          side: THREE.DoubleSide,
+        }),
+        0.42
+      ),
+
+      // Saluran Port Internal (Transfer & Intake)
+      portHighlight: new THREE.MeshStandardMaterial({
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 0.35,
+        metalness: 0.3,
+        roughness: 0.4,
+        transparent: true,
+        opacity: 0.55,
+      }),
+    };
+
+    /**
+     * =========================================================================
+     * FUNGSI PEMBANTU GEOMETRI MEKANIS (BAUT HEX, STUD, DLL)
+     * =========================================================================
+     */
+    function createHexBolt(radius = 0.11, height = 0.12, washer = true) {
+      const group = new THREE.Group();
+      const headGeo = new THREE.CylinderGeometry(radius, radius, height, 6);
+      const headMesh = new THREE.Mesh(headGeo, MAT.chromeSteel);
+      headMesh.position.y = height / 2;
+      headMesh.castShadow = true;
+      group.add(headMesh);
+
+      if (washer) {
+        const washerGeo = new THREE.CylinderGeometry(radius * 1.32, radius * 1.32, height * 0.25, 18);
+        const washerMesh = new THREE.Mesh(washerGeo, MAT.darkIron);
+        washerMesh.position.y = height * 0.125;
+        group.add(washerMesh);
+      }
+      return group;
+    }
+
+    function createStudNut(radius = 0.13, height = 0.16) {
+      const group = new THREE.Group();
+      const nut = createHexBolt(radius, height, true);
+      group.add(nut);
+      const studGeo = new THREE.CylinderGeometry(radius * 0.58, radius * 0.58, height * 1.45, 14);
+      const stud = new THREE.Mesh(studGeo, MAT.chromeSteel);
+      stud.position.y = height * 0.72;
+      group.add(stud);
+      return group;
+    }
+
+    /**
+     * =========================================================================
+     * PEMBANGUNAN KOMPONEN 3D MESIN MOTOR 2-TAK
+     * =========================================================================
+     */
+    const engineRoot = new THREE.Group();
+    scene.add(engineRoot);
+
+    // Grup animasi utama
+    const crankcaseGroup = new THREE.Group();
+    const crankshaftGroup = new THREE.Group();
+    const flywheelGroup = new THREE.Group();
+    const pistonGroup = new THREE.Group();
+    const conRodGroup = new THREE.Group();
+    const cylinderBlockGroup = new THREE.Group();
+    const cylinderHeadGroup = new THREE.Group();
+    const sparkPlugGroup = new THREE.Group();
+    const carburetorGroup = new THREE.Group();
+    const exhaustGroup = new THREE.Group();
+
+    engineRoot.add(
+      crankcaseGroup,
+      crankshaftGroup,
+      flywheelGroup,
+      pistonGroup,
+      conRodGroup,
+      cylinderBlockGroup,
+      cylinderHeadGroup,
+      sparkPlugGroup,
+      carburetorGroup,
+      exhaustGroup
+    );
+
+    // -------------------------------------------------------------------------
+    // 1. CRANKCASE (BAK MESIN / RUANG BILAS BAWAH)
+    // -------------------------------------------------------------------------
+    function buildCrankcase() {
+      // Bentuk profil crankcase 2D yang diekstrusi untuk ruang kruk as + dudukan gearbox belakang
+      const shape = new THREE.Shape();
+      const r = 2.05;
+      shape.absarc(0, 0, r, Math.PI * 0.15, Math.PI * 1.65, false);
+      // Bagian belakang crankcase (rumah kopling / transmisi)
+      shape.lineTo(-2.85, -1.75);
+      shape.quadraticCurveTo(-3.45, -1.55, -3.45, -0.75);
+      shape.lineTo(-3.1, 0.85);
+      shape.quadraticCurveTo(-2.7, 1.45, -1.65, 1.65);
+      shape.closePath();
+
+      // Lubang ruang engkol (crank chamber) di tengah agar terlihat berongga
+      const crankHole = new THREE.Path();
+      crankHole.absarc(0, 0, 1.68, 0, Math.PI * 2, true);
+      shape.holes.push(crankHole);
+
+      const extrudeSettings = {
+        depth: 2.3,
+        bevelEnabled: true,
+        bevelSegments: 4,
+        steps: 1,
+        bevelSize: 0.12,
+        bevelThickness: 0.12,
+      };
+
+      const caseGeo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+      caseGeo.translate(0, 0, -1.15);
+      const caseMesh = new THREE.Mesh(caseGeo, MAT.castAluminium);
+      caseMesh.castShadow = true;
+      caseMesh.receiveShadow = true;
+      crankcaseGroup.add(caseMesh);
+
+      // Penutup sisi kiri (Generator / Stator Cover) yang sedikit terbuka/transparan
+      const leftCoverGeo = new THREE.CylinderGeometry(1.88, 1.95, 0.45, 36);
+      leftCoverGeo.rotateX(Math.PI / 2);
+      const leftCover = new THREE.Mesh(leftCoverGeo, MAT.castAluminium);
+      leftCover.position.set(0, 0, 1.38);
+      crankcaseGroup.add(leftCover);
+
+      // Penutup sisi kanan (Clutch / Primary Gear Cover)
+      const rightCoverGeo = new THREE.CylinderGeometry(1.92, 2.0, 0.52, 36);
+      rightCoverGeo.rotateX(Math.PI / 2);
+      const rightCover = new THREE.Mesh(rightCoverGeo, MAT.castAluminium);
+      rightCover.position.set(0, 0, -1.42);
+      crankcaseGroup.add(rightCover);
+
+      // Dudukan baut keliling crankcase (10 baut keliling)
+      const boltAngles = [0.4, 1.1, 2.2, 2.8, 3.4, 4.0, 4.7, 5.4];
+      boltAngles.forEach((ang) => {
+        const bx = Math.cos(ang) * 1.96;
+        const by = Math.sin(ang) * 1.96;
+        const bFront = createHexBolt(0.09, 0.12);
+        bFront.rotation.x = Math.PI / 2;
+        bFront.position.set(bx, by, 1.58);
+        crankcaseGroup.add(bFront);
+
+        const bBack = createHexBolt(0.09, 0.12);
+        bBack.rotation.x = -Math.PI / 2;
+        bBack.position.set(bx, by, -1.65);
+        crankcaseGroup.add(bBack);
+      });
+
+      // Leher dudukan silinder bagian atas crankcase (Deck)
+      const deckGeo = new THREE.BoxGeometry(3.35, 0.55, 3.15);
+      const deckMesh = new THREE.Mesh(deckGeo, MAT.castAluminium);
+      deckMesh.position.set(0, 2.08, 0);
+      crankcaseGroup.add(deckMesh);
+
+      // Reed Valve Housing (Rumah membran intake di belakang silinder / crankcase)
+      const reedBoxGeo = new THREE.BoxGeometry(1.15, 1.05, 1.25);
+      const reedBox = new THREE.Mesh(reedBoxGeo, MAT.castAluminium);
+      reedBox.position.set(-1.95, 1.85, 0);
+      reedBox.rotation.z = 0.28;
+      crankcaseGroup.add(reedBox);
+
+      // Kaki dudukan mesin bawah (Engine Mounting Lugs)
+      const mountGeo = new THREE.CylinderGeometry(0.32, 0.32, 2.6, 20);
+      mountGeo.rotateX(Math.PI / 2);
+      const mountFront = new THREE.Mesh(mountGeo, MAT.castAluminiumSolid);
+      mountFront.position.set(1.55, -1.65, 0);
+      crankcaseGroup.add(mountFront);
+
+      const mountRear = new THREE.Mesh(mountGeo, MAT.castAluminiumSolid);
+      mountRear.position.set(-2.95, -1.55, 0);
+      crankcaseGroup.add(mountRear);
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. CRANKSHAFT (KRUK AS) & FLYWHEEL (MAGNETO)
+    // -------------------------------------------------------------------------
+    function buildCrankshaftAndFlywheel() {
+      const R = ENGINE_SPECS.crankRadius; // 1.05
+      const webRadius = 1.52;
+      const webThick = 0.36;
+      const webOffsetZ = 0.54;
+
+      // Membuat satu daun kruk as (Crank Web) dengan potongan penyeimbang (counterweight)
+      function createCrankWeb() {
+        const webGroup = new THREE.Group();
+        const webShape = new THREE.Shape();
+        webShape.absarc(0, 0, webRadius, 0, Math.PI * 2, false);
+
+        // Dua lubang penyeimbang di sisi berlawanan dengan crank pin
+        const hole1 = new THREE.Path();
+        hole1.absarc(-0.55, -0.65, 0.32, 0, Math.PI * 2, true);
+        const hole2 = new THREE.Path();
+        hole2.absarc(0.55, -0.65, 0.32, 0, Math.PI * 2, true);
+        webShape.holes.push(hole1, hole2);
+
+        const geo = new THREE.ExtrudeGeometry(webShape, {
+          depth: webThick,
+          bevelEnabled: true,
+          bevelSegments: 3,
+          bevelSize: 0.04,
+          bevelThickness: 0.04,
+        });
+        geo.translate(0, 0, -webThick / 2);
+        const mesh = new THREE.Mesh(geo, MAT.darkIron);
+        mesh.castShadow = true;
+        webGroup.add(mesh);
+
+        // Cincin machined steel di tepi web
+        const rimGeo = new THREE.CylinderGeometry(webRadius + 0.01, webRadius + 0.01, webThick * 0.65, 36, 1, true);
+        rimGeo.rotateX(Math.PI / 2);
+        const rim = new THREE.Mesh(rimGeo, MAT.machinedAluminium);
+        webGroup.add(rim);
+
+        return webGroup;
+      }
+
+      // Daun kruk as depan (+Z) & belakang (-Z)
+      const webFront = createCrankWeb();
+      webFront.position.z = webOffsetZ;
+      crankshaftGroup.add(webFront);
+
+      const webBack = createCrankWeb();
+      webBack.position.z = -webOffsetZ;
+      crankshaftGroup.add(webBack);
+
+      // Crank Pin (Pen kruk as eksentrik di Y = +R saat sudut 0)
+      const crankPinGeo = new THREE.CylinderGeometry(0.28, 0.28, webOffsetZ * 2 + webThick * 0.9, 24);
+      crankPinGeo.rotateX(Math.PI / 2);
+      const crankPin = new THREE.Mesh(crankPinGeo, MAT.chromeSteel);
+      crankPin.position.set(0, R, 0);
+      crankshaftGroup.add(crankPin);
+
+      // Bearing Big-End (Roller bearing cage tembaga/perunggu di crank pin)
+      const bigBearingGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.52, 24);
+      bigBearingGeo.rotateX(Math.PI / 2);
+      const bigBearing = new THREE.Mesh(bigBearingGeo, MAT.bronze);
+      bigBearing.position.set(0, R, 0);
+      crankshaftGroup.add(bigBearing);
+
+      // Poros Utama Kruk As (Main Shafts) kiri & kanan
+      const mainShaftGeo = new THREE.CylinderGeometry(0.34, 0.34, 3.6, 24);
+      mainShaftGeo.rotateX(Math.PI / 2);
+      const mainShaft = new THREE.Mesh(mainShaftGeo, MAT.chromeSteel);
+      crankshaftGroup.add(mainShaft);
+
+      // Main Ball Bearings (2 laher kruk as di luar webs)
+      [-1.02, 1.02].forEach((zPos) => {
+        const bearingOuter = new THREE.Mesh(
+          new THREE.TorusGeometry(0.56, 0.14, 14, 32),
+          MAT.chromeSteel
+        );
+        bearingOuter.position.z = zPos;
+        crankshaftGroup.add(bearingOuter);
+      });
+
+      // Gigi Primer (Primary Drive Gear) di sisi kanan (-Z)
+      const gearGeo = new THREE.CylinderGeometry(0.68, 0.68, 0.32, 28);
+      gearGeo.rotateX(Math.PI / 2);
+      const primaryGear = new THREE.Mesh(gearGeo, MAT.forgedSteel);
+      primaryGear.position.z = -1.35;
+      crankshaftGroup.add(primaryGear);
+
+      // FLYWHEEL / MAGNETO ROTOR di sisi kiri (+Z)
+      const rotorCupGeo = new THREE.CylinderGeometry(1.38, 1.42, 0.62, 36);
+      rotorCupGeo.rotateX(Math.PI / 2);
+      const rotorCup = new THREE.Mesh(rotorCupGeo, MAT.darkIron);
+      rotorCup.position.z = 1.48;
+      rotorCup.castShadow = true;
+      flywheelGroup.add(rotorCup);
+
+      // Sirip pendingin & tonjolan pulser pada flywheel
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        const fin = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.38, 0.14),
+          MAT.machinedAluminium
+        );
+        fin.position.set(Math.cos(ang) * 0.92, Math.sin(ang) * 0.92, 1.82);
+        fin.rotation.z = ang;
+        flywheelGroup.add(fin);
+      }
+
+      // Mur pengunci flywheel tengah
+      const flyNut = createHexBolt(0.24, 0.22, true);
+      flyNut.rotation.x = Math.PI / 2;
+      flyNut.position.z = 1.82;
+      flywheelGroup.add(flyNut);
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. PISTON, PISTON RINGS (2 RING), & WRIST PIN
+    // -------------------------------------------------------------------------
+    function buildPiston() {
+      const r = ENGINE_SPECS.boreRadius * 0.975;
+      const h = ENGINE_SPECS.pistonHeight;
+
+      // Body utama piston (silinder aluminium bubut)
+      const bodyGeo = new THREE.CylinderGeometry(r, r * 0.99, h, 40);
+      const bodyMesh = new THREE.Mesh(bodyGeo, MAT.machinedAluminium);
+      bodyMesh.position.y = h / 2;
+      bodyMesh.castShadow = true;
+      pistonGroup.add(bodyMesh);
+
+      // Mahkota Piston (Dome Crown sedikit cembung untuk ruang bakar 2-tak)
+      const domeGeo = new THREE.SphereGeometry(r * 1.45, 36, 16, 0, Math.PI * 2, 0, 0.48);
+      const domeMesh = new THREE.Mesh(domeGeo, MAT.machinedAluminium);
+      domeMesh.position.y = h - r * 1.28;
+      pistonGroup.add(domeMesh);
+
+      // Dua Ring Piston (Compression Rings) Chrome Steel di bagian atas piston
+      const ringPositionsY = [h - 0.16, h - 0.31];
+      ringPositionsY.forEach((ry) => {
+        // Alur gelap di bawah ring
+        const grooveGeo = new THREE.CylinderGeometry(r * 0.96, r * 0.96, 0.055, 36);
+        const groove = new THREE.Mesh(grooveGeo, MAT.darkIron);
+        groove.position.y = ry;
+        pistonGroup.add(groove);
+
+        // Ring piston chrome mengkilap sedikit menonjol
+        const ringGeo = new THREE.TorusGeometry(r * 1.003, 0.024, 12, 48);
+        ringGeo.rotateX(Math.PI / 2);
+        const ring = new THREE.Mesh(ringGeo, MAT.chromeSteel);
+        ring.position.y = ry;
+        pistonGroup.add(ring);
+      });
+
+      // Wrist Pin (Pin Piston Baja Chrome menembus sumbu Z)
+      const pinGeo = new THREE.CylinderGeometry(0.24, 0.24, r * 1.88, 24);
+      pinGeo.rotateX(Math.PI / 2);
+      const wristPin = new THREE.Mesh(pinGeo, MAT.chromeSteel);
+      wristPin.position.y = ENGINE_SPECS.pistonPinOffset;
+      pistonGroup.add(wristPin);
+
+      // Boss dudukan pin piston (2 sisi)
+      [-r * 0.68, r * 0.68].forEach((zOff) => {
+        const bossGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.32, 20);
+        bossGeo.rotateX(Math.PI / 2);
+        const boss = new THREE.Mesh(bossGeo, MAT.castAluminiumSolid);
+        boss.position.set(0, ENGINE_SPECS.pistonPinOffset, zOff);
+        pistonGroup.add(boss);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. CONNECTING ROD (STANG SEHER PROFIL I-BEAM)
+    // -------------------------------------------------------------------------
+    function buildConnectingRod() {
+      const L = ENGINE_SPECS.conRodLength; // 3.45
+
+      // Big End (Lingkaran bawah yang mengikat crank pin)
+      const bigEndGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.44, 28);
+      bigEndGeo.rotateX(Math.PI / 2);
+      const bigEnd = new THREE.Mesh(bigEndGeo, MAT.forgedSteel);
+      bigEnd.castShadow = true;
+      conRodGroup.add(bigEnd);
+
+      // Small End (Lingkaran atas yang mengikat wrist pin di Y = L)
+      const smallEndGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.42, 24);
+      smallEndGeo.rotateX(Math.PI / 2);
+      const smallEnd = new THREE.Mesh(smallEndGeo, MAT.forgedSteel);
+      smallEnd.position.y = L;
+      conRodGroup.add(smallEnd);
+
+      // Bushing perunggu di small-end
+      const bushingGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.45, 20);
+      bushingGeo.rotateX(Math.PI / 2);
+      const bushing = new THREE.Mesh(bushingGeo, MAT.bronze);
+      bushing.position.y = L;
+      conRodGroup.add(bushing);
+
+      // Batang tengah I-Beam meruncing dari Big-End ke Small-End
+      const beamShape = new THREE.Shape();
+      beamShape.moveTo(-0.26, 0.35);
+      beamShape.lineTo(0.26, 0.35);
+      beamShape.lineTo(0.17, L - 0.25);
+      beamShape.lineTo(-0.17, L - 0.25);
+      beamShape.closePath();
+
+      const beamGeo = new THREE.ExtrudeGeometry(beamShape, {
+        depth: 0.24,
+        bevelEnabled: true,
+        bevelSegments: 2,
+        bevelSize: 0.03,
+        bevelThickness: 0.03,
+      });
+      beamGeo.translate(0, 0, -0.12);
+      const beamMesh = new THREE.Mesh(beamGeo, MAT.forgedSteel);
+      beamMesh.castShadow = true;
+      conRodGroup.add(beamMesh);
+
+      // Tulang rusuk I-Beam (Flanges depan & belakang)
+      const ribGeo = new THREE.BoxGeometry(0.08, L - 0.65, 0.34);
+      const ribMesh = new THREE.Mesh(ribGeo, MAT.machinedAluminium);
+      ribMesh.position.y = L / 2;
+      conRodGroup.add(ribMesh);
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. CYLINDER BLOCK (SIRIP PENDINGIN, LINER, INTAKE, EXHAUST, TRANSFER PORTS)
+    // -------------------------------------------------------------------------
+    function buildCylinderBlock() {
+      const y0 = ENGINE_SPECS.blockBottomY; // 2.35
+      const h = ENGINE_SPECS.blockHeight;   // 3.25
+      const rInner = ENGINE_SPECS.boreRadius;
+
+      // Liner Silinder Dalam (Besi cor berdinding tipis yang transparan)
+      const linerGeo = new THREE.CylinderGeometry(rInner + 0.14, rInner + 0.14, h + 0.25, 44, 1, true);
+      const linerMesh = new THREE.Mesh(linerGeo, MAT.cylinderLiner);
+      linerMesh.position.y = y0 + h / 2;
+      cylinderBlockGroup.add(linerMesh);
+
+      // 10 Sirip Pendingin Aluminium (Cooling Fins) bertingkat yang realistis
+      const finCount = 10;
+      for (let i = 0; i < finCount; i++) {
+        const t = i / (finCount - 1);
+        const fy = y0 + 0.22 + t * (h - 0.38);
+        // Sirip bagian atas sedikit lebih lebar dari bawah
+        const finW = 3.15 + t * 0.55;
+        const finD = 3.05 + t * 0.45;
+
+        const finShape = new THREE.Shape();
+        const hw = finW / 2;
+        const hd = finD / 2;
+        const cr = 0.42; // Sudut membulat
+
+        finShape.moveTo(-hw + cr, -hd);
+        finShape.lineTo(hw - cr, -hd);
+        finShape.quadraticCurveTo(hw, -hd, hw, -hd + cr);
+        finShape.lineTo(hw, hd - cr);
+        finShape.quadraticCurveTo(hw, hd, hw - cr, hd);
+        finShape.lineTo(-hw + cr, hd);
+        finShape.quadraticCurveTo(-hw, hd, -hw, hd - cr);
+        finShape.lineTo(-hw, -hd + cr);
+        finShape.quadraticCurveTo(-hw, -hd, -hw + cr, -hd);
+
+        // Lubang silinder tengah pada sirip
+        const boreHole = new THREE.Path();
+        boreHole.absarc(0, 0, rInner + 0.12, 0, Math.PI * 2, true);
+        finShape.holes.push(boreHole);
+
+        const finGeo = new THREE.ExtrudeGeometry(finShape, {
+          depth: 0.085,
+          bevelEnabled: true,
+          bevelSegments: 2,
+          bevelSize: 0.015,
+          bevelThickness: 0.015,
+        });
+        finGeo.rotateX(Math.PI / 2);
+
+        const finMesh = new THREE.Mesh(finGeo, MAT.castAluminium);
+        finMesh.position.y = fy;
+        finMesh.castShadow = true;
+        finMesh.receiveShadow = true;
+        cylinderBlockGroup.add(finMesh);
+      }
+
+      // Base Flange Blok Silinder (Flensa bawah tempat baut pengikat ke crankcase)
+      const baseFlangeGeo = new THREE.BoxGeometry(3.45, 0.22, 3.25);
+      const baseFlange = new THREE.Mesh(baseFlangeGeo, MAT.castAluminium);
+      baseFlange.position.y = y0 + 0.11;
+      cylinderBlockGroup.add(baseFlange);
+
+      // 4 Baut Flange Bawah
+      const flangeOffsets = [
+        [-1.38, -1.28],
+        [1.38, -1.28],
+        [-1.38, 1.28],
+        [1.38, 1.28],
+      ];
+      flangeOffsets.forEach(([fx, fz]) => {
+        const bolt = createStudNut(0.11, 0.15);
+        bolt.position.set(fx, y0 + 0.22, fz);
+        cylinderBlockGroup.add(bolt);
+      });
+
+      // 4 Pillar Stud Bolts Panjang di 4 sudut blok silinder
+      const studOffsets = [
+        [-1.18, -1.12],
+        [1.18, -1.12],
+        [-1.18, 1.12],
+        [1.18, 1.12],
+      ];
+      studOffsets.forEach(([sx, sz]) => {
+        const pillarGeo = new THREE.CylinderGeometry(0.18, 0.18, h, 16);
+        const pillar = new THREE.Mesh(pillarGeo, MAT.castAluminium);
+        pillar.position.set(sx, y0 + h / 2, sz);
+        cylinderBlockGroup.add(pillar);
+      });
+
+      // === SALURAN INTERNAL KHAS MESIN 2-TAK ===
+      // A. Exhaust Port (Saluran Buang di sisi depan +X)
+      const exPortGeo = new THREE.CylinderGeometry(0.68, 0.62, 1.25, 24);
+      exPortGeo.rotateZ(Math.PI / 2);
+      const exPort = new THREE.Mesh(exPortGeo, MAT.castAluminium);
+      exPort.position.set(1.55, y0 + 1.55, 0);
+      exPort.rotation.z = -0.18;
+      cylinderBlockGroup.add(exPort);
+
+      // Flensa Oval Exhaust dengan 2 baut tanam
+      const exFlangeGeo = new THREE.BoxGeometry(0.22, 1.55, 1.85);
+      const exFlange = new THREE.Mesh(exFlangeGeo, MAT.castAluminiumSolid);
+      exFlange.position.set(2.12, y0 + 1.45, 0);
+      exFlange.rotation.z = -0.18;
+      cylinderBlockGroup.add(exFlange);
+
+      // B. Intake Port (Saluran Masuk di sisi belakang -X)
+      const inPortGeo = new THREE.CylinderGeometry(0.54, 0.58, 1.15, 24);
+      inPortGeo.rotateZ(Math.PI / 2);
+      const inPort = new THREE.Mesh(inPortGeo, MAT.castAluminium);
+      inPort.position.set(-1.55, y0 + 0.85, 0);
+      inPort.rotation.z = 0.22;
+      cylinderBlockGroup.add(inPort);
+
+      // C. Transfer Ports Kiri & Kanan (+Z dan -Z)
+      // Saluran melengkung yang mengalirkan campuran udara-bensin dari crankcase ke ruang bakar
+      [-1, 1].forEach((dirZ) => {
+        const curve = new THREE.CatmullRomCurve3([
+          new THREE.Vector3(0, y0 - 0.15, dirZ * 1.42),
+          new THREE.Vector3(0, y0 + 0.65, dirZ * 1.68),
+          new THREE.Vector3(0, y0 + 1.32, dirZ * 1.32),
+        ]);
+        const transferGeo = new THREE.TubeGeometry(curve, 20, 0.26, 14, false);
+        const transferMesh = new THREE.Mesh(transferGeo, MAT.portHighlight);
+        cylinderBlockGroup.add(transferMesh);
+      });
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. CYLINDER HEAD (KEPALA SILINDER) & SPARK PLUG (BUSI)
+    // -------------------------------------------------------------------------
+    function buildCylinderHeadAndSparkPlug() {
+      const headBaseY = ENGINE_SPECS.blockBottomY + ENGINE_SPECS.blockHeight; // 5.60
+      const headH = ENGINE_SPECS.headHeight; // 1.15
+
+      // Gasket Kepala Silinder (Tembaga tipis di pertemuan blok dan head)
+      const gasketGeo = new THREE.CylinderGeometry(1.65, 1.65, 0.04, 36);
+      const gasket = new THREE.Mesh(gasketGeo, MAT.bronze);
+      gasket.position.y = headBaseY + 0.02;
+      cylinderHeadGroup.add(gasket);
+
+      // 5 Sirip Pendingin Kepala Silinder yang meruncing ke atas (Dome profile)
+      for (let i = 0; i < 5; i++) {
+        const t = i / 4;
+        const fy = headBaseY + 0.14 + t * (headH - 0.22);
+        const rad = 1.98 - t * 0.45;
+        const finGeo = new THREE.CylinderGeometry(rad, rad * 1.02, 0.09, 36);
+        const fin = new THREE.Mesh(finGeo, MAT.castAluminium);
+        fin.position.y = fy;
+        fin.castShadow = true;
+        cylinderHeadGroup.add(fin);
+      }
+
+      // Kubah Ruang Bakar Dalam (Combustion Chamber Squish Dome)
+      const domeInnerGeo = new THREE.SphereGeometry(
+        ENGINE_SPECS.boreRadius * 0.96,
+        32,
+        16,
+        0,
+        Math.PI * 2,
+        0,
+        Math.PI * 0.46
+      );
+      const domeInner = new THREE.Mesh(domeInnerGeo, MAT.cylinderLiner);
+      domeInner.rotation.x = Math.PI;
+      domeInner.position.y = headBaseY + 0.58;
+      cylinderHeadGroup.add(domeInner);
+
+      // 4 Mur Pengikat Cylinder Head di atas
+      const nutCoords = [
+        [-1.18, -1.12],
+        [1.18, -1.12],
+        [-1.18, 1.12],
+        [1.18, 1.12],
+      ];
+      nutCoords.forEach(([nx, nz]) => {
+        const nut = createStudNut(0.14, 0.18);
+        nut.position.set(nx, headBaseY + 0.65, nz);
+        cylinderHeadGroup.add(nut);
+      });
+
+      // === SPARK PLUG (BUSI) ===
+      const plugMount = new THREE.Group();
+      plugMount.position.set(0.18, headBaseY + 0.85, 0);
+      plugMount.rotation.z = -0.22; // Sedikit miring ke depan khas motor 2-tak
+      sparkPlugGroup.add(plugMount);
+
+      // Ulir bawah busi
+      const threadGeo = new THREE.CylinderGeometry(0.14, 0.14, 0.34, 20);
+      const thread = new THREE.Mesh(threadGeo, MAT.darkIron);
+      thread.position.y = -0.15;
+      plugMount.add(thread);
+
+      // Elektroda massa (L-hook di ujung bawah)
+      const groundElec = new THREE.Mesh(
+        new THREE.BoxGeometry(0.03, 0.09, 0.11),
+        MAT.chromeSteel
+      );
+      groundElec.position.set(0.05, -0.34, 0);
+      plugMount.add(groundElec);
+
+      // Body Hex Baja Busi
+      const hexBody = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.22, 0.22, 0.26, 6),
+        MAT.chromeSteel
+      );
+      hexBody.position.y = 0.14;
+      plugMount.add(hexBody);
+
+      // Isolator Keramik Putih dengan 3 rib/alur
+      const ceramicGeo = new THREE.CylinderGeometry(0.13, 0.16, 0.62, 24);
+      const ceramic = new THREE.Mesh(ceramicGeo, MAT.ceramicWhite);
+      ceramic.position.y = 0.56;
+      plugMount.add(ceramic);
+
+      for (let r = 0; r < 3; r++) {
+        const rib = new THREE.Mesh(
+          new THREE.TorusGeometry(0.145, 0.018, 10, 24),
+          MAT.ceramicWhite
+        );
+        rib.rotation.x = Math.PI / 2;
+        rib.position.y = 0.45 + r * 0.11;
+        plugMount.add(rib);
+      }
+
+      // Terminal Tip Atas Busi
+      const tipGeo = new THREE.CylinderGeometry(0.06, 0.08, 0.18, 16);
+      const tip = new THREE.Mesh(tipGeo, MAT.chromeSteel);
+      tip.position.y = 0.94;
+      plugMount.add(tip);
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. KARBURATOR (CARBURETOR) LENGKAP DI SISI INTAKE (-X)
+    // -------------------------------------------------------------------------
+    function buildCarburetor() {
+      const carbBase = new THREE.Group();
+      carbBase.position.set(-2.95, 2.75, 0);
+      carburetorGroup.add(carbBase);
+
+      // Intake Manifold Karet Hitam penghubung ke silinder
+      const manifoldGeo = new THREE.CylinderGeometry(0.52, 0.56, 0.95, 24);
+      manifoldGeo.rotateZ(Math.PI / 2);
+      const manifold = new THREE.Mesh(manifoldGeo, MAT.rubberBlack);
+      manifold.position.set(0.68, 0.12, 0);
+      manifold.rotation.z = 0.22;
+      carbBase.add(manifold);
+
+      // Klem pengikat manifold (2 buah)
+      [0.35, 0.98].forEach((cx) => {
+        const clamp = new THREE.Mesh(
+          new THREE.TorusGeometry(0.55, 0.03, 10, 28),
+          MAT.chromeSteel
+        );
+        clamp.rotation.y = Math.PI / 2;
+        clamp.position.set(cx, 0.12 + cx * 0.2, 0);
+        carbBase.add(clamp);
+      });
+
+      // Venturi Barrel Utama Karburator
+      const venturiGeo = new THREE.CylinderGeometry(0.54, 0.58, 1.35, 28);
+      venturiGeo.rotateZ(Math.PI / 2);
+      const venturi = new THREE.Mesh(venturiGeo, MAT.castAluminiumSolid);
+      venturi.castShadow = true;
+      carbBase.add(venturi);
+
+      // Bellmouth / Corong Intake Belakang
+      const bellGeo = new THREE.TorusGeometry(0.56, 0.08, 14, 32);
+      bellGeo.rotateY(Math.PI / 2);
+      const bell = new THREE.Mesh(bellGeo, MAT.machinedAluminium);
+      bell.position.x = -0.68;
+      carbBase.add(bell);
+
+      // Slide Tower / Rumah Skep Atas
+      const towerGeo = new THREE.CylinderGeometry(0.42, 0.44, 1.15, 24);
+      const tower = new THREE.Mesh(towerGeo, MAT.castAluminiumSolid);
+      tower.position.y = 0.62;
+      carbBase.add(tower);
+
+      // Tutup Skep Atas (Top Cap) + Adjuster Kabel Gas Kuningan
+      const capGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.16, 24);
+      const cap = new THREE.Mesh(capGeo, MAT.machinedAluminium);
+      cap.position.y = 1.22;
+      carbBase.add(cap);
+
+      const cableAdj = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.09, 0.09, 0.35, 14),
+        MAT.brass
+      );
+      cableAdj.position.y = 1.44;
+      carbBase.add(cableAdj);
+
+      // Float Bowl (Mangkuk Pelampung Karburator Bawah)
+      const bowlGeo = new THREE.BoxGeometry(0.95, 0.78, 0.92);
+      const bowl = new THREE.Mesh(bowlGeo, MAT.castAluminiumSolid);
+      bowl.position.set(0.05, -0.58, 0);
+      bowl.castShadow = true;
+      carbBase.add(bowl);
+
+      // Baut Penyetel Angin / Langsam (Idle & Air Screw) Kuningan di samping
+      const airScrew = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.07, 0.07, 0.28, 12),
+        MAT.brass
+      );
+      airScrew.rotation.x = Math.PI / 2;
+      airScrew.position.set(-0.18, -0.15, 0.54);
+      carbBase.add(airScrew);
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. KNALPOT 2-TAK (EXPANSION CHAMBER / PERUT KNALPOT) DI SISI DEPAN (+X)
+    // -------------------------------------------------------------------------
+    function buildExhaustSystem() {
+      // Kurva 3D jalur knalpot 2-tak yang khas (header melengkung ke bawah lalu melebar ke samping)
+      const exhaustPoints = [
+        new THREE.Vector3(2.15, 3.8, 0.0),    // Keluar dari Exhaust Port
+        new THREE.Vector3(3.15, 3.45, 0.15),  // Leher header awal
+        new THREE.Vector3(3.75, 2.35, 0.65),  // Melengkung turun ke depan mesin
+        new THREE.Vector3(3.35, 1.05, 1.35),  // Divergent cone (perut mengembang)
+        new THREE.Vector3(1.65, 0.55, 1.85),  // Belly (bagian perut terbesar)
+        new THREE.Vector3(-0.65, 0.72, 1.92), // Convergent cone (mengecil kembali)
+        new THREE.Vector3(-2.65, 1.15, 1.85), // Stinger pipe
+        new THREE.Vector3(-4.15, 1.55, 1.82), // Ujung silencer
+      ];
+
+      // Radius bervariasi sepanjang kurva untuk membentuk Expansion Chamber 2-tak sejati
+      const radii = [0.56, 0.58, 0.68, 0.98, 1.18, 0.76, 0.32, 0.38];
+
+      // Membangun geometri tabung dengan radius variabel secara prosedural
+      const curve = new THREE.CatmullRomCurve3(exhaustPoints);
+      const tubularSegments = 72;
+      const radialSegments = 28;
+      const frames = curve.computeFrenetFrames(tubularSegments, false);
+
+      const positions = [];
+      const normals = [];
+      const indices = [];
+
+      function getRadiusAt(u) {
+        const scaled = u * (radii.length - 1);
+        const idx = Math.floor(scaled);
+        const frac = scaled - idx;
+        if (idx >= radii.length - 1) return radii[radii.length - 1];
+        // Smoothstep interpolation
+        const s = frac * frac * (3 - 2 * frac);
+        return radii[idx] * (1 - s) + radii[idx + 1] * s;
+      }
+
+      for (let i = 0; i <= tubularSegments; i++) {
+        const u = i / tubularSegments;
+        const P = curve.getPointAt(u);
+        const N = frames.normals[i];
+        const B = frames.binormals[i];
+        const r = getRadiusAt(u);
+
+        for (let j = 0; j <= radialSegments; j++) {
+          const v = (j / radialSegments) * Math.PI * 2;
+          const sin = Math.sin(v);
+          const cos = -Math.cos(v);
+
+          const nx = cos * N.x + sin * B.x;
+          const ny = cos * N.y + sin * B.y;
+          const nz = cos * N.z + sin * B.z;
+
+          normals.push(nx, ny, nz);
+          positions.push(P.x + r * nx, P.y + r * ny, P.z + r * nz);
+        }
+      }
+
+      for (let j = 1; j <= tubularSegments; j++) {
+        for (let i = 1; i <= radialSegments; i++) {
+          const a = (radialSegments + 1) * (j - 1) + (i - 1);
+          const b = (radialSegments + 1) * j + (i - 1);
+          const c = (radialSegments + 1) * j + i;
+          const d = (radialSegments + 1) * (j - 1) + i;
+
+          indices.push(a, b, d);
+          indices.push(b, c, d);
+        }
+      }
+
+      const chamberGeo = new THREE.BufferGeometry();
+      chamberGeo.setIndex(indices);
+      chamberGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      chamberGeo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+
+      const chamberMesh = new THREE.Mesh(chamberGeo, MAT.exhaustSteel);
+      chamberMesh.castShadow = true;
+      exhaustGroup.add(chamberMesh);
+
+      // Flensa Pengikat Header Knalpot di Exhaust Port + 2 Baut Chrome
+      const flangeGeo = new THREE.BoxGeometry(0.18, 1.48, 1.78);
+      const flange = new THREE.Mesh(flangeGeo, MAT.darkIron);
+      flange.position.set(2.22, 3.78, 0);
+      flange.rotation.z = -0.18;
+      exhaustGroup.add(flange);
+
+      [-0.65, 0.65].forEach((fz) => {
+        const bolt = createHexBolt(0.1, 0.14);
+        bolt.rotation.z = -Math.PI / 2 - 0.18;
+        bolt.position.set(2.3, 3.78, fz);
+        exhaustGroup.add(bolt);
+      });
+
+      // Tabung Silencer / Muffler Aluminium di ujung belakang knalpot
+      const mufflerGeo = new THREE.CylinderGeometry(0.44, 0.44, 1.65, 28);
+      mufflerGeo.rotateZ(Math.PI / 2 - 0.25);
+      const muffler = new THREE.Mesh(mufflerGeo, MAT.machinedAluminium);
+      muffler.position.set(-4.35, 1.6, 1.82);
+      muffler.castShadow = true;
+      exhaustGroup.add(muffler);
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. EFEK VISUAL PEMBAKARAN (SPARK FLASH & COMBUSTION GLOW)
+    // -------------------------------------------------------------------------
+    const combustionLight = new THREE.PointLight(0xff6b00, 0, 5.5);
+    combustionLight.position.set(0, 5.2, 0);
+    scene.add(combustionLight);
+
+    const flameGeo = new THREE.SphereGeometry(1.18, 24, 16);
+    const flameMat = new THREE.MeshBasicMaterial({
+      color: 0xff8800,
+      transparent: true,
+      opacity: 0.0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    });
+    const flameMesh = new THREE.Mesh(flameGeo, flameMat);
+    flameMesh.scale.set(1.0, 0.45, 1.0);
+    flameMesh.position.set(0, 5.35, 0);
+    scene.add(flameMesh);
+
+    // Bangun seluruh komponen 3D
+    buildCrankcase();
+    buildCrankshaftAndFlywheel();
+    buildPiston();
+    buildConnectingRod();
+    buildCylinderBlock();
+    buildCylinderHeadAndSparkPlug();
+    buildCarburetor();
+    buildExhaustSystem();
+
+    /**
+     * =========================================================================
+     * KINEMATIKA SLIDER-CRANK & SINKRONISASI MEKANIS REAL-TIME
+     * =========================================================================
+     */
+    const phaseDot = document.getElementById('phase-dot');
+    const phaseLabel = document.getElementById('phase-label');
+    const crankDegLabel = document.getElementById('crank-deg');
+
+    function updateKinematics() {
+      const theta = state.crankAngle; // 0 = TMA (Top Dead Center)
+      const R = ENGINE_SPECS.crankRadius;
+      const L = ENGINE_SPECS.conRodLength;
+
+      // Putaran Kruk As & Flywheel (searah jarum jam dilihat dari kanan / -Z)
+      crankshaftGroup.rotation.z = -theta;
+      flywheelGroup.rotation.z = -theta;
+
+      // Posisi Crank Pin dalam koordinat world (saat theta = 0, pin berada di puncak Y = +R)
+      const pinX = Math.sin(theta) * R;
+      const pinY = Math.cos(theta) * R;
+
+      // Rumus Kinematika Slider-Crank Exact untuk posisi Y Wrist Pin:
+      // y_wrist = R * cos(theta) + sqrt(L^2 - (R * sin(theta))^2)
+      const sinTerm = R * Math.sin(theta);
+      const wristY = pinY + Math.sqrt(Math.max(0.001, L * L - sinTerm * sinTerm));
+
+      // Posisi Piston (wrist pin berada pada ketinggian pistonPinOffset dari dasar piston)
+      const exp = state.explodeProgress;
+      const pistonExplodeY = exp * 1.45;
+      pistonGroup.position.y = wristY - ENGINE_SPECS.pistonPinOffset + pistonExplodeY;
+
+      // Posisi & Sudut Connecting Rod (menempel presisi pada crank pin menuju wrist pin)
+      conRodGroup.position.set(pinX, pinY + exp * 0.65, 0);
+      const dx = 0 - pinX;
+      const dy = wristY - pinY;
+      // Sudut batang dari sumbu +Y
+      conRodGroup.rotation.z = Math.atan2(-dx, dy);
+
+      // Animasi Posisi Exploded View pada komponen statis lainnya
+      cylinderBlockGroup.position.y = exp * 1.35;
+      cylinderHeadGroup.position.y = exp * 2.85;
+      sparkPlugGroup.position.y = exp * 3.95;
+      carburetorGroup.position.x = -exp * 1.65;
+      exhaustGroup.position.x = exp * 1.85;
+      flywheelGroup.position.z = exp * 1.35;
+
+      // Siklus Pembakaran 2-Tak (Bus memercik dekat TMA: sudut 350° - 25°)
+      const normAngle = ((theta % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+      const deg = Math.round((normAngle * 180) / Math.PI);
+      crankDegLabel.textContent = `${deg}°`;
+
+      // Indikator Fase & Kilatan Api Ruang Bakar
+      let sparkIntensity = 0;
+      if (deg >= 348 || deg <= 28) {
+        // Percikan busi & Pembakaran awal
+        const dist = deg >= 348 ? (360 - deg) + 10 : deg;
+        sparkIntensity = Math.max(0, 1 - dist / 32);
+        phaseLabel.textContent = 'PEMBAKARAN (POWER)';
+        phaseDot.style.background = '#f97316';
+        phaseDot.style.boxShadow = '0 0 12px #f97316';
+      } else if (deg > 28 && deg <= 125) {
+        phaseLabel.textContent = 'EKSPANSI & BUANG';
+        phaseDot.style.background = '#eab308';
+        phaseDot.style.boxShadow = '0 0 10px #eab308';
+      } else if (deg > 125 && deg <= 235) {
+        // Piston di sekitar TMB: Transfer port terbuka membilas ruang bakar
+        phaseLabel.textContent = 'BILAS (TRANSFER & SCAVENGING)';
+        phaseDot.style.background = '#38bdf8';
+        phaseDot.style.boxShadow = '0 0 12px #38bdf8';
+      } else {
+        phaseLabel.textContent = 'KOMPRESI & HISAP CRANKCASE';
+        phaseDot.style.background = '#22c55e';
+        phaseDot.style.boxShadow = '0 0 10px #22c55e';
+      }
+
+      // Update visual kilatan pembakaran (hanya terlihat saat tidak exploded)
+      const activeSpark = sparkIntensity * (1 - exp);
+      combustionLight.intensity = activeSpark * 6.5;
+      flameMat.opacity = activeSpark * 0.72;
+      flameMesh.position.y = 5.38 + Math.sin(theta * 12) * 0.03;
+    }
+
+    /**
+     * =========================================================================
+     * KONTROL INTERAKTIF UI (TRANSPARAN, EXPLODED, ROTATE, SPEED, RESET)
+     * =========================================================================
+     */
+    const btnTransparent = document.getElementById('btn-transparent');
+    const btnExploded = document.getElementById('btn-exploded');
+    const btnRotate = document.getElementById('btn-rotate');
+    const btnPlay = document.getElementById('btn-play');
+    const textPlay = document.getElementById('text-play');
+    const iconPlay = document.getElementById('icon-play');
+    const speedSlider = document.getElementById('speed-slider');
+    const speedVal = document.getElementById('speed-val');
+    const btnReset = document.getElementById('btn-reset');
+
+    // 1. Toggle Transparent / Cutaway View
+    function setTransparentMode(enabled) {
+      state.isTransparent = enabled;
+      btnTransparent.classList.toggle('active', enabled);
+
+      cutawayMaterials.forEach((mat) => {
+        if (enabled) {
+          mat.transparent = true;
+          mat.opacity = mat.userData.targetOpacity;
+          mat.depthWrite = false;
+        } else {
+          mat.transparent = false;
+          mat.opacity = 1.0;
+          mat.depthWrite = true;
+        }
+        mat.needsUpdate = true;
+      });
+    }
+
+    btnTransparent.addEventListener('click', () => {
+      setTransparentMode(!state.isTransparent);
+    });
+
+    // 2. Toggle Exploded View
+    btnExploded.addEventListener('click', () => {
+      state.isExploded = !state.isExploded;
+      btnExploded.classList.toggle('active', state.isExploded);
+    });
+
+    // 3. Toggle Auto Rotate
+    btnRotate.addEventListener('click', () => {
+      state.autoRotate = !state.autoRotate;
+      controls.autoRotate = state.autoRotate;
+      controls.autoRotateSpeed = 1.8;
+      btnRotate.classList.toggle('active', state.autoRotate);
+    });
+
+    // 4. Toggle Play / Pause
+    btnPlay.addEventListener('click', () => {
+      state.isPlaying = !state.isPlaying;
+      btnPlay.classList.toggle('active', state.isPlaying);
+      textPlay.textContent = state.isPlaying ? 'Jalan' : 'Jeda';
+      iconPlay.innerHTML = state.isPlaying
+        ? '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>'
+        : '<polygon points="5 3 19 12 5 21 5 3"/>';
+    });
+
+    // 5. Slider Kecepatan Animasi
+    speedSlider.addEventListener('input', (e) => {
+      state.speedMultiplier = parseFloat(e.target.value);
+      speedVal.textContent = `${state.speedMultiplier.toFixed(2)}x`;
+    });
+
+    // 6. Reset Camera dengan transisi halus
+    let isResettingCamera = false;
+    btnReset.addEventListener('click', () => {
+      isResettingCamera = true;
+      if (state.autoRotate) {
+        state.autoRotate = false;
+        controls.autoRotate = false;
+        btnRotate.classList.remove('active');
+      }
+    });
+
+    // Batalkan reset kamera otomatis jika pengguna mulai menyentuh/memutar kamera
+    controls.addEventListener('start', () => {
+      isResettingCamera = false;
+    });
+
+    /**
+     * =========================================================================
+     * RESPONSIVE RESIZE & ANIMATION LOOP
+     * =========================================================================
+     */
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    });
+
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+
+      const delta = Math.min(clock.getDelta(), 0.05);
+
+      // Update sudut kruk as
+      if (state.isPlaying) {
+        state.crankAngle += delta * 5.2 * state.speedMultiplier;
+      }
+
+      // Interpolasi halus untuk Exploded View
+      const targetExplode = state.isExploded ? 1.0 : 0.0;
+      state.explodeProgress += (targetExplode - state.explodeProgress) * Math.min(1, delta * 7.5);
+
+      // Interpolasi halus saat Reset Camera ditekan
+      if (isResettingCamera) {
+        camera.position.lerp(INITIAL_CAM_POS, delta * 5.0);
+        controls.target.lerp(INITIAL_TARGET, delta * 5.0);
+        if (
+          camera.position.distanceTo(INITIAL_CAM_POS) < 0.05 &&
+          controls.target.distanceTo(INITIAL_TARGET) < 0.05
+        ) {
+          camera.position.copy(INITIAL_CAM_POS);
+          controls.target.copy(INITIAL_TARGET);
+          isResettingCamera = false;
+        }
+      }
+
+      updateKinematics();
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // Inisialisasi posisi awal & hilangkan loader saat siap (dengan durasi minimum
+    // agar tidak "berkedip" di perangkat cepat, dan transisi halus di perangkat lambat)
+    const LOADER_MIN_MS = 500;
+    const loaderStartedAt = (window.performance && performance.now) ? performance.now() : Date.now();
+
+    window.addEventListener('load', () => {
+      setTransparentMode(true);
+      updateKinematics();
+      renderer.render(scene, camera);
+
+      const now = (window.performance && performance.now) ? performance.now() : Date.now();
+      const elapsed = now - loaderStartedAt;
+      const remaining = Math.max(0, LOADER_MIN_MS - elapsed);
+
+      setTimeout(() => {
+        const loader = document.getElementById('loader');
+        if (loader) {
+          loader.style.opacity = '0';
+          loader.style.pointerEvents = 'none';
+          setTimeout(() => loader.remove(), 450);
+        }
+        animate();
+      }, remaining);
+    });
+  </script>
+</body>
+</html>

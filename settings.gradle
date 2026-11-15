@@ -1,0 +1,2 @@
+rootProject.name = "Motor2TakViewer3D"
+include ':app'
