@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Mesin 2-Tak 3D",
+    "slug": "mesin-2-tak-3d",
+    "version": "1.0.0",
+    "orientation": "landscape",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b0d12",
+    "android": {
+      "package": "com.ibnumalik.mesin2tak3d",
+      "adaptiveIcon": {
+        "backgroundColor": "#0b0d12"
+      },
+      "softwareKeyboardLayoutMode": "pan"
+    },
+    "plugins": [
+      [
+        "expo-screen-orientation",
+        {
+          "initialOrientation": "LANDSCAPE"
+        }
+      ]
+    ]
+  }
+}
